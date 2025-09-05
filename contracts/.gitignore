@@ -1,0 +1,27 @@
+# Node.js dependencies
+node_modules/
+
+# Hardhat build artifacts and cache
+artifacts/
+cache/
+typechain-types/
+
+# Hardhat reports
+coverage/
+coverage.json
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+# IMPORTANT: Never commit this file! It contains private keys.
+.env
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
