@@ -46,8 +46,8 @@ Ensure you have the following software installed on your system:
 ### 2. Clone the Repository
 
 ```bash
-git clone <your-repository-url>
-cd aquacredit-ledger
+git clone https://github.com/Yashraghuvans/AquaCredit-Ledger.git
+cd AquaCredit-Ledger
 ````
 
 ### 3. Setup Environment Variables
