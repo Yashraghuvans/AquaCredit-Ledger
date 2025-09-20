@@ -1,8 +1,101 @@
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { submissions as allSubmissions, users, blockchainLogs } from "@/data/mockData";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { FiCheckCircle, FiAlertTriangle, FiXCircle, FiClock, FiHash } from "react-icons/fi";
+import { 
+  Bar, 
+  BarChart, 
+  CartesianGrid, 
+  Legend, 
+  ResponsiveContainer, 
+  Tooltip, 
+  XAxis, 
+  YAxis, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  LineChart, 
+  Line 
+} from "recharts";
+import { 
+  FiCheckCircle, 
+  FiAlertTriangle, 
+  FiXCircle, 
+  FiClock, 
+  FiHash,
+  FiCpu,
+  FiEdit,
+  FiX
+} from "react-icons/fi";
+
+// --- Drone Feature Components & Data ---
+
+// Dummy Data for the Drone List
+const dummyDrones = [
+  { id: 'AQ-DR-01', name: 'AquaMapper Pro', status: 'Online', specs: { range: '5 km', flightTime: '45 mins', camera: '4K Multispectral', payload: '2 kg' } },
+  { id: 'AQ-DR-02', name: 'Coastal Scout', status: 'Online', specs: { range: '3 km', flightTime: '30 mins', camera: '1080p HD', payload: '1 kg' } },
+  { id: 'AQ-DR-03', name: 'Delta Wing X', status: 'Charging', specs: { range: '10 km', flightTime: '90 mins', camera: 'Thermal + RGB', payload: '5 kg' } },
+  { id: 'AQ-DR-04', name: 'Coastal Scout', status: 'Maintenance', specs: { range: '3 km', flightTime: '30 mins', camera: '1080p HD', payload: '1 kg' } },
+];
+
+const DroneDetailsModal = ({ drone, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+    <div className="relative w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg">
+      <button onClick={onClose} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-full text-muted-foreground hover:bg-accent">
+        <FiX />
+      </button>
+      <div className="flex items-center gap-4">
+        <div className="grid h-12 w-12 place-items-center rounded-lg bg-primary/10 text-primary"><FiCpu size={24}/></div>
+        <div>
+          <h3 className="text-lg font-semibold">{drone.name}</h3>
+          <p className="text-sm text-muted-foreground">ID: {drone.id}</p>
+        </div>
+      </div>
+      <div className="mt-6 space-y-2 border-t pt-4">
+        <h4 className="text-sm font-medium text-muted-foreground">Specifications</h4>
+        <div className="text-sm"><strong>Range:</strong> {drone.specs.range}</div>
+        <div className="text-sm"><strong>Max Flight Time:</strong> {drone.specs.flightTime}</div>
+        <div className="text-sm"><strong>Camera:</strong> {drone.specs.camera}</div>
+        <div className="text-sm"><strong>Payload Capacity:</strong> {drone.specs.payload}</div>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button onClick={onClose} className="h-9 rounded-md border px-4 text-sm">Close</button>
+      </div>
+    </div>
+  </div>
+);
+
+const DeviceList = () => {
+  const [viewingDrone, setViewingDrone] = useState(null);
+
+  return (
+    <>
+      {viewingDrone && <DroneDetailsModal drone={viewingDrone} onClose={() => setViewingDrone(null)} />}
+      <div className="rounded-xl border bg-card p-5 h-full">
+        <h2 className="font-semibold mb-4">Drone Fleet Status</h2>
+        <div className="space-y-3">
+          {dummyDrones.map(drone => (
+            <div key={drone.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent">
+              <div>
+                <p className="font-medium text-sm">{drone.name}</p>
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${drone.status === 'Online' ? 'bg-emerald-500' : drone.status === 'Charging' ? 'bg-amber-500' : 'bg-rose-500'}`}></span>
+                  <p className="text-xs text-muted-foreground">{drone.status}</p>
+                </div>
+              </div>
+              <button onClick={() => setViewingDrone(drone)} className="h-8 w-8 grid place-items-center rounded-md border text-muted-foreground hover:bg-background">
+                <FiEdit size={14}/>
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+
+// --- Main Page Component ---
 
 export default function Index() {
   const { currentUser } = useAuth();
@@ -17,7 +110,7 @@ export default function Index() {
     status,
     count: visibleSubmissions.filter((s) => s.status === (status as any)).length,
   }));
-
+  
   // Line chart data: submissions per day (visible scope)
   const perDayMap = new Map<string, number>();
   visibleSubmissions.forEach((s) => {
@@ -71,7 +164,7 @@ export default function Index() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
                   <XAxis dataKey="status" stroke="hsl(var(--muted-foreground))" />
                   <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-                  <Tooltip />
+                  <Tooltip wrapperClassName="rounded-md border bg-card p-2 shadow-lg" />
                   <Legend />
                   <Bar dataKey="count" fill="#0ea5e9" radius={[6,6,0,0]} />
                 </BarChart>
@@ -83,10 +176,10 @@ export default function Index() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Tooltip />
+                  <Tooltip wrapperClassName="rounded-md border bg-card p-2 shadow-lg" />
                   <Legend />
                   <Pie data={statusCounts} dataKey="count" nameKey="status" innerRadius={50} outerRadius={80} paddingAngle={4}>
-                    {statusCounts.map((entry, index) => (
+                    {statusCounts.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
@@ -96,7 +189,7 @@ export default function Index() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="rounded-xl border bg-card p-5 lg:col-span-2">
             <h2 className="font-semibold mb-4">Submissions Over Time (Line)</h2>
             <div className="h-64">
@@ -105,7 +198,7 @@ export default function Index() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
                   <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
                   <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-                  <Tooltip />
+                  <Tooltip wrapperClassName="rounded-md border bg-card p-2 shadow-lg" />
                   <Legend />
                   <Line type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
@@ -132,6 +225,8 @@ export default function Index() {
               </ul>
             )}
           </div>
+          {/* --- Drone Component Added Here --- */}
+          <DeviceList />
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -184,7 +279,7 @@ export default function Index() {
         </section>
 
         <section className="rounded-xl border bg-card p-5">
-          <h2 className="font-semibold mb-4">Recent Activity</h2>
+          <h2 className="font-semibold mb-4">Recent Submissions</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
