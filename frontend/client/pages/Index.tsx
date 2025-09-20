@@ -11,14 +11,17 @@ import {
   // Icons added for Drone Component
   FiCpu,
   FiEdit,
-  FiX
+  FiX,
+  // Icon for AquaCredits
+  FiFeather,
 } from "react-icons/fi";
-import { useState } from "react"; // useState added for Drone Component
+// useEffect, useRef are added for the notification feature, useState is kept
+import { useState, useEffect, useRef } from "react";
+// Import the toast notification library, assuming 'sonner' is used for bottom-right pop-ups
+import { toast } from "sonner";
 
-// --- Drone Component Code ---
-// This section contains the data, modal, and list components for the drone fleet.
 
-// 1. Dummy Data for the Drone List
+// --- Drone Component Code (Unchanged) ---
 const dummyDrones = [
   { id: 'AQ-DR-01', name: 'AquaMapper Pro', status: 'Online', specs: { range: '5 km', flightTime: '45 mins', camera: '4K Multispectral', payload: '2 kg' } },
   { id: 'AQ-DR-02', name: 'Coastal Scout', status: 'Online', specs: { range: '3 km', flightTime: '30 mins', camera: '1080p HD', payload: '1 kg' } },
@@ -26,7 +29,6 @@ const dummyDrones = [
   { id: 'AQ-DR-04', name: 'Coastal Scout', status: 'Maintenance', specs: { range: '3 km', flightTime: '30 mins', camera: '1080p HD', payload: '1 kg' } },
 ];
 
-// 2. Drone Details Modal Component
 const DroneDetailsModal = ({ drone, onClose }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
     <div className="relative w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg animate-in fade-in-0 zoom-in-95">
@@ -56,7 +58,6 @@ const DroneDetailsModal = ({ drone, onClose }) => (
   </div>
 );
 
-// 3. Drone Fleet List Component (with improved design)
 const DeviceList = () => {
   const [viewingDrone, setViewingDrone] = useState(null);
 
@@ -121,10 +122,42 @@ export default function Index() {
     count: visibleSubmissions.filter((s) => s.status === (status as any)).length,
   }));
   
-  // Line chart data: submissions per day (visible scope)
+  // --- NEW FEATURE: AquaCredits Logic ---
+  // 1. Create a deterministic function to assign credits (5-10) based on submission ID
+  const getCreditsForSubmission = (submissionId: number) => {
+    return (submissionId % 6) + 5; // Generates a consistent integer between 5 and 10
+  };
+
+  // 2. Calculate total AquaCredits from all verified submissions
+  const totalAquaCredits = visibleSubmissions
+    .filter(s => s.status === "Verified")
+    .reduce((total, submission) => total + getCreditsForSubmission(submission.id), 0);
+
+  // 3. Logic for triggering pop-up notification on new verifications
+  const verifiedSubmissions = visibleSubmissions.filter(s => s.status === "Verified");
+  const prevVerifiedCountRef = useRef(verifiedSubmissions.length);
+
+  useEffect(() => {
+    // Check if the number of verified submissions has increased
+    if (verifiedSubmissions.length > prevVerifiedCountRef.current) {
+      // Find the newest verified submission to announce the credits
+      const latestVerifiedSubmission = verifiedSubmissions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      if (latestVerifiedSubmission) {
+        const newCredits = getCreditsForSubmission(latestVerifiedSubmission.id);
+        toast.success(`Submission Verified!`, {
+          description: `+${newCredits} AquaCredits were awarded for project ${latestVerifiedSubmission.projectId}.`,
+          duration: 5000,
+        });
+      }
+    }
+    // Update the ref to the current count for the next render
+    prevVerifiedCountRef.current = verifiedSubmissions.length;
+  }, [verifiedSubmissions.length]); // Dependency array ensures this runs only when the count changes
+
+  // Line chart data (unchanged)
   const perDayMap = new Map<string, number>();
   visibleSubmissions.forEach((s) => {
-    const d = s.date; // YYYY-MM-DD
+    const d = s.date;
     perDayMap.set(d, (perDayMap.get(d) || 0) + 1);
   });
   const lineSeries = Array.from(perDayMap.entries())
@@ -133,9 +166,9 @@ export default function Index() {
 
   const teamManagers = users.filter((u) => u.role === "manager" && (currentUser.role === "super-admin" || u.adminId === currentUser.id));
 
-  const pieColors = ["#10b981", "#f59e0b", "#ef4444"]; // emerald/amber/rose
+  const pieColors = ["#10b981", "#f59e0b", "#ef4444"];
 
-  // Notifications summary
+  // Notifications summary (unchanged)
   const pendingCount = statusCounts.find(s=>s.status==="Pending")?.count ?? 0;
   const verifiedCount = statusCounts.find(s=>s.status==="Verified")?.count ?? 0;
   const rejectedCount = statusCounts.find(s=>s.status==="Rejected")?.count ?? 0;
@@ -155,9 +188,13 @@ export default function Index() {
             <p className="text-sm text-muted-foreground">Total Submissions</p>
             <p className="text-3xl font-semibold mt-1">{visibleSubmissions.length}</p>
           </div>
+          {/* --- MODIFIED "Verified" Box --- */}
           <div className="rounded-xl border bg-card p-5">
-            <p className="text-sm text-muted-foreground">Verified</p>
-            <p className="text-3xl font-semibold mt-1">{visibleSubmissions.filter(s=>s.status==="Verified").length}</p>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <p>AquaCredits</p>
+              <FiFeather className="h-5 w-5 text-emerald-500" />
+            </div>
+            <p className="text-3xl font-semibold mt-1">{totalAquaCredits}</p>
           </div>
           <div className="rounded-xl border bg-card p-5">
             <p className="text-sm text-muted-foreground">Pending Review</p>
@@ -165,6 +202,7 @@ export default function Index() {
           </div>
         </section>
 
+        {/* --- All other sections remain unchanged --- */}
         <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="rounded-xl border bg-card p-5 xl:col-span-2">
             <h2 className="font-semibold mb-4">Submission Status (Bar)</h2>
@@ -271,7 +309,6 @@ export default function Index() {
                </table>
              </div>
            </div>
-          {/* Drone component is placed here */}
           <DeviceList />
         </section>
 
