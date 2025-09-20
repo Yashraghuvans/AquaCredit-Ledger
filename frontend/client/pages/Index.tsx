@@ -1,36 +1,24 @@
-import { useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { submissions as allSubmissions, users, blockchainLogs } from "@/data/mockData";
-import { 
-  Bar, 
-  BarChart, 
-  CartesianGrid, 
-  Legend, 
-  ResponsiveContainer, 
-  Tooltip, 
-  XAxis, 
-  YAxis, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
-  Line 
-} from "recharts";
-import { 
-  FiCheckCircle, 
-  FiAlertTriangle, 
-  FiXCircle, 
-  FiClock, 
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import {
+  FiCheckCircle,
+  FiAlertTriangle,
+  FiXCircle,
+  FiClock,
   FiHash,
+  // Icons added for Drone Component
   FiCpu,
   FiEdit,
   FiX
 } from "react-icons/fi";
+import { useState } from "react"; // useState added for Drone Component
 
-// --- Drone Feature Components & Data ---
+// --- Drone Component Code ---
+// This section contains the data, modal, and list components for the drone fleet.
 
-// Dummy Data for the Drone List
+// 1. Dummy Data for the Drone List
 const dummyDrones = [
   { id: 'AQ-DR-01', name: 'AquaMapper Pro', status: 'Online', specs: { range: '5 km', flightTime: '45 mins', camera: '4K Multispectral', payload: '2 kg' } },
   { id: 'AQ-DR-02', name: 'Coastal Scout', status: 'Online', specs: { range: '3 km', flightTime: '30 mins', camera: '1080p HD', payload: '1 kg' } },
@@ -38,9 +26,10 @@ const dummyDrones = [
   { id: 'AQ-DR-04', name: 'Coastal Scout', status: 'Maintenance', specs: { range: '3 km', flightTime: '30 mins', camera: '1080p HD', payload: '1 kg' } },
 ];
 
+// 2. Drone Details Modal Component
 const DroneDetailsModal = ({ drone, onClose }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-    <div className="relative w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg">
+    <div className="relative w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg animate-in fade-in-0 zoom-in-95">
       <button onClick={onClose} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-full text-muted-foreground hover:bg-accent">
         <FiX />
       </button>
@@ -53,10 +42,12 @@ const DroneDetailsModal = ({ drone, onClose }) => (
       </div>
       <div className="mt-6 space-y-2 border-t pt-4">
         <h4 className="text-sm font-medium text-muted-foreground">Specifications</h4>
-        <div className="text-sm"><strong>Range:</strong> {drone.specs.range}</div>
-        <div className="text-sm"><strong>Max Flight Time:</strong> {drone.specs.flightTime}</div>
-        <div className="text-sm"><strong>Camera:</strong> {drone.specs.camera}</div>
-        <div className="text-sm"><strong>Payload Capacity:</strong> {drone.specs.payload}</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <div><strong>Range:</strong> {drone.specs.range}</div>
+            <div><strong>Flight Time:</strong> {drone.specs.flightTime}</div>
+            <div><strong>Camera:</strong> {drone.specs.camera}</div>
+            <div><strong>Payload:</strong> {drone.specs.payload}</div>
+        </div>
       </div>
       <div className="mt-6 flex justify-end">
         <button onClick={onClose} className="h-9 rounded-md border px-4 text-sm">Close</button>
@@ -65,27 +56,46 @@ const DroneDetailsModal = ({ drone, onClose }) => (
   </div>
 );
 
+// 3. Drone Fleet List Component (with improved design)
 const DeviceList = () => {
   const [viewingDrone, setViewingDrone] = useState(null);
+
+  const getStatusClasses = (status) => {
+    switch (status) {
+      case 'Online':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+      case 'Charging':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+      default:
+        return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300';
+    }
+  };
 
   return (
     <>
       {viewingDrone && <DroneDetailsModal drone={viewingDrone} onClose={() => setViewingDrone(null)} />}
       <div className="rounded-xl border bg-card p-5 h-full">
         <h2 className="font-semibold mb-4">Drone Fleet Status</h2>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {dummyDrones.map(drone => (
-            <div key={drone.id} className="flex items-center justify-between p-2 rounded-md hover:bg-accent">
-              <div>
-                <p className="font-medium text-sm">{drone.name}</p>
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${drone.status === 'Online' ? 'bg-emerald-500' : drone.status === 'Charging' ? 'bg-amber-500' : 'bg-rose-500'}`}></span>
-                  <p className="text-xs text-muted-foreground">{drone.status}</p>
+            <div key={drone.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+                    <FiCpu size={18} />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm leading-tight">{drone.name}</p>
+                  <p className="text-xs text-muted-foreground">{drone.id}</p>
                 </div>
               </div>
-              <button onClick={() => setViewingDrone(drone)} className="h-8 w-8 grid place-items-center rounded-md border text-muted-foreground hover:bg-background">
-                <FiEdit size={14}/>
-              </button>
+              <div className="flex items-center gap-3">
+                 <span className={`hidden sm:inline-block px-2 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(drone.status)}`}>
+                    {drone.status}
+                </span>
+                <button onClick={() => setViewingDrone(drone)} className="h-8 w-8 grid place-items-center rounded-md border text-muted-foreground hover:bg-background">
+                  <FiEdit size={14}/>
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -95,7 +105,7 @@ const DeviceList = () => {
 };
 
 
-// --- Main Page Component ---
+// --- Main Dashboard Page ---
 
 export default function Index() {
   const { currentUser } = useAuth();
@@ -164,7 +174,7 @@ export default function Index() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
                   <XAxis dataKey="status" stroke="hsl(var(--muted-foreground))" />
                   <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-                  <Tooltip wrapperClassName="rounded-md border bg-card p-2 shadow-lg" />
+                  <Tooltip />
                   <Legend />
                   <Bar dataKey="count" fill="#0ea5e9" radius={[6,6,0,0]} />
                 </BarChart>
@@ -176,10 +186,10 @@ export default function Index() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Tooltip wrapperClassName="rounded-md border bg-card p-2 shadow-lg" />
+                  <Tooltip />
                   <Legend />
                   <Pie data={statusCounts} dataKey="count" nameKey="status" innerRadius={50} outerRadius={80} paddingAngle={4}>
-                    {statusCounts.map((_entry, index) => (
+                    {statusCounts.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                     ))}
                   </Pie>
@@ -189,7 +199,7 @@ export default function Index() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="rounded-xl border bg-card p-5 lg:col-span-2">
             <h2 className="font-semibold mb-4">Submissions Over Time (Line)</h2>
             <div className="h-64">
@@ -198,7 +208,7 @@ export default function Index() {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" />
                   <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
                   <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
-                  <Tooltip wrapperClassName="rounded-md border bg-card p-2 shadow-lg" />
+                  <Tooltip />
                   <Legend />
                   <Line type="monotone" dataKey="count" stroke="#06b6d4" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
@@ -225,91 +235,44 @@ export default function Index() {
               </ul>
             )}
           </div>
-          {/* --- Drone Component Added Here --- */}
-          <DeviceList />
         </section>
-
+        
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="rounded-xl border bg-card p-5 lg:col-span-2">
-            <h2 className="font-semibold mb-4">Recent Activities</h2>
-            <ul className="space-y-3">
-              {recentLogs.map((l) => (
-                <li key={l.id} className="flex items-start gap-3">
-                  <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <FiClock />
-                  </span>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium">{l.activity}</span>
-                      <span className="text-xs text-muted-foreground">{new Date(l.timestamp).toLocaleString()}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <FiHash /> <span className="font-mono">{l.hash}</span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-xl border bg-card p-5">
-            <h2 className="font-semibold mb-4">Notifications</h2>
-            <ul className="space-y-3">
-              {notifications.map((n, idx) => (
-                <li key={idx} className="flex items-start gap-3">
-                  {n.type === "success" && (
-                    <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><FiCheckCircle /></span>
-                  )}
-                  {n.type === "warning" && (
-                    <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><FiAlertTriangle /></span>
-                  )}
-                  {n.type === "error" && (
-                    <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"><FiXCircle /></span>
-                  )}
-                  {n.type === "info" && (
-                    <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"><FiClock /></span>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium leading-tight">{n.title}</p>
-                    <p className="text-xs text-muted-foreground">{n.desc}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section className="rounded-xl border bg-card p-5">
-          <h2 className="font-semibold mb-4">Recent Submissions</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="py-2 pr-4">Project</th>
-                  <th className="py-2 pr-4">Location</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleSubmissions.slice(0, 8).map((s) => (
-                  <tr key={s.id} className="border-t">
-                    <td className="py-2 pr-4 font-medium">{s.projectId}</td>
-                    <td className="py-2 pr-4">{s.location}</td>
-                    <td className="py-2 pr-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        s.status === "Verified" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                        s.status === "Pending" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
-                        "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
-                      }`}>
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4">{new Date(s.date).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <div className="lg:col-span-2 rounded-xl border bg-card p-5">
+             <h2 className="font-semibold mb-4">Recent Activity</h2>
+             <div className="overflow-x-auto">
+               <table className="min-w-full text-sm">
+                 <thead>
+                   <tr className="text-left text-muted-foreground">
+                     <th className="py-2 pr-4">Project</th>
+                     <th className="py-2 pr-4">Location</th>
+                     <th className="py-2 pr-4">Status</th>
+                     <th className="py-2 pr-4">Date</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {visibleSubmissions.slice(0, 5).map((s) => (
+                     <tr key={s.id} className="border-t">
+                       <td className="py-2 pr-4 font-medium">{s.projectId}</td>
+                       <td className="py-2 pr-4">{s.location}</td>
+                       <td className="py-2 pr-4">
+                         <span className={`px-2 py-0.5 rounded-full text-xs ${
+                           s.status === "Verified" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                           s.status === "Pending" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
+                           "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                         }`}>
+                           {s.status}
+                         </span>
+                       </td>
+                       <td className="py-2 pr-4">{new Date(s.date).toLocaleDateString()}</td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           </div>
+          {/* Drone component is placed here */}
+          <DeviceList />
         </section>
 
         <section className="rounded-xl border bg-card p-5">
