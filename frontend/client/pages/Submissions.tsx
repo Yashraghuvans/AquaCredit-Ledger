@@ -11,24 +11,40 @@ const dummySteps = [
 ];
 
 export default function SubmissionsPage() {
-  // We assume useAuth now provides the global submissions list and setters
   const { currentUser, submissions, setSubmissions } = useAuth();
 
-  // The visible list is now derived from the global 'submissions' state
+  // Dummy local submission history for demo
+  const [localSubmissions, setLocalSubmissions] = useState<any[]>([]);
+
   const visible = useMemo(() => {
     if (!submissions) return [];
     if (currentUser.role === "super-admin") return submissions;
     if (currentUser.role === "admin") return submissions.filter(s => s.adminId === currentUser.id);
     return submissions.filter(s => s.submittedBy === currentUser.id);
   }, [currentUser, submissions]);
-  
-  // These functions now update the global state via setSubmissions
+
   const verify = (id: number) => setSubmissions(submissions.map(s => s.id === id ? { ...s, status: "Verified" } : s));
   const reject = (id: number) => setSubmissions(submissions.map(s => s.id === id ? { ...s, status: "Rejected" } : s));
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [step, setStep] = useState<number>(-1);
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [dummyCredit, setDummyCredit] = useState<number>(0);
+
+  // Add new dummy submission to local history
+  const addDummySubmission = (imgUrl: string) => {
+    const credit = Math.floor(Math.random() * 100) + 1; // random credit
+    setLocalSubmissions(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        image: imgUrl,
+        credit,
+        date: new Date().toLocaleString(),
+      },
+    ]);
+    setDummyCredit(credit);
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -36,13 +52,18 @@ export default function SubmissionsPage() {
       setSelectedImage(file);
       setImageUrl(URL.createObjectURL(file));
       setStep(0);
-      runDummySteps();
+      runDummySteps(URL.createObjectURL(file));
     }
   };
 
-  const runDummySteps = () => {
+  const runDummySteps = (imgUrl: string) => {
     dummySteps.forEach((_, idx) => {
-      setTimeout(() => setStep(idx), 1000 * (idx + 1));
+      setTimeout(() => {
+        setStep(idx);
+        if (idx === dummySteps.length - 1) {
+          addDummySubmission(imgUrl);
+        }
+      }, 1000 * (idx + 1));
     });
   };
 
@@ -53,8 +74,6 @@ export default function SubmissionsPage() {
           <h2 className="text-xl font-semibold">Submissions</h2>
           <p className="text-sm text-muted-foreground">Review, verify or reject submissions from the list below.</p>
         </div>
-
-        {/* The form section has been removed from this page */}
 
         <section className="rounded-xl border bg-card p-5">
           <div className="overflow-x-auto">
@@ -67,6 +86,8 @@ export default function SubmissionsPage() {
                   <th className="py-2 pr-4">Date</th>
                   <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Actions</th>
+                  <th className="py-2 pr-4">Image</th>
+                  <th className="py-2 pr-4">Credit</th>
                 </tr>
               </thead>
               <tbody>
@@ -93,6 +114,31 @@ export default function SubmissionsPage() {
                         </>
                       )}
                     </td>
+                    <td className="py-2 pr-4">
+                      {s.image ? (
+                        <img src={s.image} alt="submission" className="w-12 h-12 object-cover rounded" />
+                      ) : "-"}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {s.credit ? s.credit : "-"}
+                    </td>
+                  </tr>
+                ))}
+                {/* Dummy local submissions */}
+                {localSubmissions.map(s => (
+                  <tr key={s.id} className="border-t align-top bg-gray-50">
+                    <td className="py-2 pr-4 font-medium">Dummy Project</td>
+                    <td className="py-2 pr-4">You</td>
+                    <td className="py-2 pr-4">Dummy Location</td>
+                    <td className="py-2 pr-4">{s.date}</td>
+                    <td className="py-2 pr-4">
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-700">Verified</span>
+                    </td>
+                    <td className="py-2 pr-4">-</td>
+                    <td className="py-2 pr-4">
+                      <img src={s.image} alt="submission" className="w-12 h-12 object-cover rounded" />
+                    </td>
+                    <td className="py-2 pr-4">{s.credit}</td>
                   </tr>
                 ))}
               </tbody>
@@ -130,6 +176,7 @@ export default function SubmissionsPage() {
                 alt="Uploaded"
                 className="w-48 h-48 object-cover rounded border"
               />
+              <p className="mt-2 text-blue-600">Dummy Credit: <span className="font-bold">{dummyCredit}</span></p>
             </div>
           )}
         </div>

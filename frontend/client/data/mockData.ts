@@ -18,6 +18,8 @@ export interface Submission {
   status: "Pending" | "Verified" | "Rejected";
   imageUrl: string;
   location: string;
+  image?: string; // dummy image for UI
+  credit?: number; // dummy credit for UI
 }
 
 export interface BlockchainLog {
