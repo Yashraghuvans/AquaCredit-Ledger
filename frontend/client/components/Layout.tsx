@@ -1,16 +1,19 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { users } from "@/data/mockData";
-import { FiHome, FiUsers, FiFileText, FiList, FiPlusCircle, FiLogOut, FiX, FiImage, FiPaperclip } from "react-icons/fi";
+import { FiHome, FiUsers, FiFileText, FiList, FiPlusCircle, FiLogOut, FiX, FiImage } from "react-icons/fi";
 import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 
+// This modal now includes enhanced styling and feedback to match the submission page form.
 function NewSubmissionModal({ onClose, createNewSubmission }: { onClose: () => void, createNewSubmission: (form: any) => void }) {
   const { currentUser } = useAuth();
-  const [form, setForm] = useState({ 
-    projectId: "", 
-    location: "", 
-    date: new Date().toISOString().slice(0, 10) 
+  const [form, setForm] = useState({
+    projectId: "",
+    location: "",
+    date: new Date().toISOString().slice(0, 10),
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -35,20 +38,28 @@ function NewSubmissionModal({ onClose, createNewSubmission }: { onClose: () => v
   };
 
   const handleSubmit = () => {
-    if (!form.projectId || !form.location) {
-      alert("Project ID and Location are required.");
+    if (!form.projectId || !form.location || !selectedFile) {
+      toast.error("Missing Fields", {
+        description: "Project ID, Location, and an image are required.",
+      });
       return;
     }
-    const adminId = users.find(u => u.id === currentUser.id)?.adminId || 2;
-    // Use the preview URL if a file was selected
-    const submissionData = { ...form, adminId, imageUrl: previewUrl };
+    // Assign a fallback admin if one isn't directly associated with the manager
+    const adminId = currentUser.adminId || users.find(u => u.role === 'admin')?.id || 2;
+    const submissionData = { ...form, adminId, imageUrl: previewUrl! };
+    
     createNewSubmission(submissionData);
+    
+    toast.success("Submission Created", {
+      description: `Project "${form.projectId}" is now pending review.`,
+    });
+    
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl rounded-xl border bg-card p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in-0">
+      <div className="relative w-full max-w-2xl rounded-xl border bg-card p-6 shadow-lg animate-in zoom-in-95">
         <button onClick={onClose} className="absolute top-4 right-4 h-8 w-8 grid place-items-center rounded-full text-muted-foreground hover:bg-accent">
           <FiX />
         </button>
@@ -58,7 +69,6 @@ function NewSubmissionModal({ onClose, createNewSubmission }: { onClose: () => v
           <input className="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Location *" value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} />
           <input type="date" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.date} onChange={(e) => setForm(f => ({ ...f, date: e.target.value }))} />
           
-          {/* File Input Section */}
           <div className="md:col-span-2">
             <input 
               type="file" 
@@ -72,7 +82,7 @@ function NewSubmissionModal({ onClose, createNewSubmission }: { onClose: () => v
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full h-9 flex items-center justify-center gap-2 rounded-md border border-dashed text-sm text-muted-foreground hover:bg-accent"
               >
-                <FiImage /> Choose Image (Optional)
+                <FiImage /> Choose Image *
               </button>
             ) : (
               <div className="flex items-center gap-4 rounded-md border bg-accent/50 p-2">
@@ -87,8 +97,8 @@ function NewSubmissionModal({ onClose, createNewSubmission }: { onClose: () => v
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
-            <button onClick={onClose} className="h-9 rounded-md border px-3 text-sm">Cancel</button>
-            <button onClick={handleSubmit} className="h-9 rounded-md bg-primary text-primary-foreground px-3 text-sm">Submit</button>
+            <Button onClick={onClose} variant="outline">Cancel</Button>
+            <Button onClick={handleSubmit} disabled={!form.projectId || !form.location || !selectedFile}>Submit</Button>
         </div>
       </div>
     </div>
@@ -162,18 +172,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </option>
                   ))}
                 </select>
-                <button 
+                <Button 
                   onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center gap-2 h-9 rounded-md bg-primary text-primary-foreground px-3 text-sm"
+                  className="inline-flex items-center gap-2"
                 >
                   <FiPlusCircle /> New Submission
-                </button>
-                <button 
+                </Button>
+                <Button 
                   onClick={logout}
-                  className="inline-flex items-center gap-2 h-9 rounded-md border px-3 text-sm"
+                  variant="outline"
+                  className="inline-flex items-center gap-2"
                 >
                   <FiLogOut /> Logout
-                </button>
+                </Button>
               </div>
             </div>
           </header>
