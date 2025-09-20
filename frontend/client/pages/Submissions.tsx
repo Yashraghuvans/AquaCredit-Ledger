@@ -1,7 +1,14 @@
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { users } from "@/data/mockData";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+
+const dummySteps = [
+  "Verifying image...",
+  "Creating hash...",
+  "Storing in decentralized cloud...",
+  "Complete!",
+];
 
 export default function SubmissionsPage() {
   // We assume useAuth now provides the global submissions list and setters
@@ -18,6 +25,26 @@ export default function SubmissionsPage() {
   // These functions now update the global state via setSubmissions
   const verify = (id: number) => setSubmissions(submissions.map(s => s.id === id ? { ...s, status: "Verified" } : s));
   const reject = (id: number) => setSubmissions(submissions.map(s => s.id === id ? { ...s, status: "Rejected" } : s));
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [step, setStep] = useState<number>(-1);
+  const [imageUrl, setImageUrl] = useState<string>("");
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      setImageUrl(URL.createObjectURL(file));
+      setStep(0);
+      runDummySteps();
+    }
+  };
+
+  const runDummySteps = () => {
+    dummySteps.forEach((_, idx) => {
+      setTimeout(() => setStep(idx), 1000 * (idx + 1));
+    });
+  };
 
   return (
     <Layout>
@@ -72,6 +99,40 @@ export default function SubmissionsPage() {
             </table>
           </div>
         </section>
+
+        <div className="max-w-md mx-auto p-4 bg-white rounded shadow">
+          <h2 className="text-xl font-bold mb-4">New Submission</h2>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="mb-4"
+          />
+          {step >= 0 && step < dummySteps.length && (
+            <div className="mb-4">
+              <div className="flex items-center space-x-2">
+                <span className="animate-pulse">⏳</span>
+                <span>{dummySteps[step]}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded h-2 mt-2">
+                <div
+                  className="bg-blue-500 h-2 rounded"
+                  style={{ width: `${((step + 1) / dummySteps.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {step === dummySteps.length - 1 && imageUrl && (
+            <div className="mt-4">
+              <p className="text-green-600 font-semibold mb-2">Image uploaded (dummy):</p>
+              <img
+                src={imageUrl}
+                alt="Uploaded"
+                className="w-48 h-48 object-cover rounded border"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
   );
