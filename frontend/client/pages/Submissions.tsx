@@ -2,142 +2,165 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/context/AuthContext";
 import { users } from "@/data/mockData";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast"; // Ensure you have this hook
+import { toast } from "sonner";
+import { FiImage, FiX, FiLoader, FiCheckCircle, FiCircle } from "react-icons/fi";
 
-// --- New Submission Form Component ---
-const STEPS = [
+const PROCESSING_STEPS = [
+  "Uploading to cloud...",
   "Verifying image authenticity...",
-  "Hashing image for immutability...",
-  "Encrypting data...",
-  "Adding submission to the ledger...",
+  "Hashing image data for immutability...",
+  "Storing submission in blockchain logs...",
 ];
 
-function SubmissionForm({ currentUser, setSubmissions, submissions }) {
-  const [projectId, setProjectId] = useState("");
-  const [location, setLocation] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
-  const [stepIndex, setStepIndex] = useState(-1);
-  const { toast } = useToast();
-  const timeouts = useRef<number[]>([]);
+// The submission form component is updated with the new animation logic.
+function NewSubmissionForm() {
+  const { currentUser, createNewSubmission } = useAuth();
+  const [form, setForm] = useState({
+    projectId: "",
+    location: "",
+    date: new Date().toISOString().slice(0, 10),
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // New state for handling the professional loading animation
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1); // -1: idle, 0 onwards: processing
+
+  // Effect for creating a preview URL from the selected file
   useEffect(() => {
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    if (!selectedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedFile]);
 
-  useEffect(() => {
-    return () => {
-      timeouts.current.forEach((t) => window.clearTimeout(t));
-    };
-  }, []);
-
-  const handleStart = () => {
-    if (!file || !projectId || !location || running) return;
-    setRunning(true);
-    setStepIndex(-1);
-
-    STEPS.forEach((_, i) => {
-      const t = window.setTimeout(() => {
-        setStepIndex(i);
-        if (i === STEPS.length - 1) {
-          const complete = window.setTimeout(() => {
-            const newSubmission = {
-              id: Math.max(...submissions.map(s => s.id)) + 1, // Generate a new ID
-              projectId,
-              submittedBy: currentUser.id,
-              adminId: currentUser.adminId, // Assuming this exists on the user object
-              location,
-              date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-              status: "Pending",
-            };
-            
-            setSubmissions(current => [...current, newSubmission]);
-            
-            toast({ title: "Submission successful!", description: `Project ${projectId} is now pending review.` });
-            
-            // Reset form
-            setRunning(false);
-            setStepIndex(-1);
-            setFile(null);
-            setPreview(null);
-            setProjectId("");
-            setLocation("");
-
-          }, 1200);
-          timeouts.current.push(complete);
-        }
-      }, (i + 1) * 1500);
-      timeouts.current.push(t);
-    });
+  // FIXED: The missing handleFileChange function is now defined here.
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setSelectedFile(event.target.files[0]);
+    }
   };
 
-  const status = useMemo(() =>
-    STEPS.map((s, i) => ({
-      text: s,
-      state: i < stepIndex ? "done" : i === stepIndex ? "active" : "idle",
-    })), [stepIndex]);
+  // This effect runs the processing steps animation with a time lapse
+  useEffect(() => {
+    if (isProcessing && currentStep < PROCESSING_STEPS.length) {
+      const timer = setTimeout(() => {
+        // When the last step is visually completed, perform the submission
+        if (currentStep === PROCESSING_STEPS.length - 1) {
+          const adminId = currentUser.adminId || users.find(u => u.role === 'admin')?.id || 2;
+          const submissionData = { ...form, adminId, imageUrl: previewUrl! };
+          createNewSubmission(submissionData);
+          toast.success("Submission Created", {
+            description: `Project "${form.projectId}" is now pending review.`,
+          });
+          
+          // Reset the form and animation state
+          setIsProcessing(false);
+          setCurrentStep(-1);
+          setForm({ projectId: "", location: "", date: new Date().toISOString().slice(0, 10) });
+          setSelectedFile(null);
+          setPreviewUrl(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        } else {
+          // Move to the next step
+          setCurrentStep(prev => prev + 1);
+        }
+      }, 1200); // 1.2-second delay for each step
+
+      return () => clearTimeout(timer);
+    }
+  }, [isProcessing, currentStep, createNewSubmission, currentUser.adminId, form, previewUrl]);
+
+  const handleSubmit = () => {
+    if (!form.projectId || !form.location || !selectedFile) {
+      toast.error("Missing Fields", {
+        description: "Project ID, Location, and an image are required.",
+      });
+      return;
+    }
+    // Start the processing animation
+    setIsProcessing(true);
+    setCurrentStep(0);
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Submission</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input placeholder="Project ID (e.g., P-1024)" value={projectId} onChange={(e) => setProjectId(e.target.value)} />
-            <Input placeholder="Location (e.g., Coastal Region)" value={location} onChange={(e) => setLocation(e.target.value)} />
-            <Input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="md:col-span-2"/>
-            <Button onClick={handleStart} disabled={!file || !projectId || !location || running}>
-              {running ? "Processing..." : "Process & Submit"}
-            </Button>
-        </div>
-        {preview && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-            <div className="aspect-video overflow-hidden rounded-lg border">
-              <img src={preview} alt="Preview" className="h-full w-full object-cover" />
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Status</div>
-              <div className="space-y-2">
-                {status.map(({ text, state }, idx) => (
-                  <div key={idx} className={
-                    state === "done"
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : state === "active"
-                      ? "text-primary font-medium"
-                      : "text-muted-foreground"
-                  }>
-                    {state === "done" ? "✓ " : state === "active" ? "• " : "– "}
-                    {text}
-                  </div>
-                ))}
+    <div className="w-full rounded-xl border bg-card p-6 shadow-lg">
+      <h3 className="text-lg font-medium mb-4">Create New Submission</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input className="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Project ID *" value={form.projectId} onChange={(e) => setForm(f => ({ ...f, projectId: e.target.value }))} disabled={isProcessing} />
+        <input className="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Location *" value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} disabled={isProcessing} />
+        <input type="date" className="h-9 rounded-md border bg-background px-3 text-sm" value={form.date} onChange={(e) => setForm(f => ({ ...f, date: e.target.value }))} disabled={isProcessing} />
+        
+        <div className="md:col-span-2">
+          <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} className="hidden" disabled={isProcessing}/>
+          {!selectedFile ? (
+            <button onClick={() => fileInputRef.current?.click()} className="w-full h-9 flex items-center justify-center gap-2 rounded-md border border-dashed text-sm text-muted-foreground hover:bg-accent" disabled={isProcessing}>
+              <FiImage /> Choose Image *
+            </button>
+          ) : (
+            <div className="flex items-center gap-4 rounded-md border bg-accent/50 p-2">
+              {previewUrl && <img src={previewUrl} alt="Preview" className="h-12 w-12 rounded-md object-cover" />}
+              <div className="flex-grow">
+                <p className="text-sm font-medium">{selectedFile.name}</p>
+                <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
               </div>
+              <button onClick={() => setSelectedFile(null)} className="h-7 w-7 grid place-items-center rounded-full text-muted-foreground hover:bg-background" disabled={isProcessing}><FiX size={16}/></button>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </div>
+      </div>
+      
+      {/* This block displays the animated steps during submission */}
+      {isProcessing && (
+        <div className="mt-6 pt-4 border-t">
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Processing Submission...</h4>
+            <div className="space-y-3">
+                {PROCESSING_STEPS.map((step, index) => {
+                    const isCompleted = index < currentStep;
+                    const isActive = index === currentStep;
+                    const isPending = index > currentStep;
+
+                    return (
+                        <div key={index} className="flex items-center gap-3 text-sm transition-colors duration-300">
+                           {isCompleted && <FiCheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />}
+                           {isActive && <FiLoader className="h-4 w-4 text-primary animate-spin flex-shrink-0" />}
+                           {isPending && <FiCircle className="h-4 w-4 text-muted-foreground/60 flex-shrink-0" />}
+                           <span className={`${isActive ? 'text-primary' : isPending ? 'text-muted-foreground/80' : 'text-foreground'}`}>
+                               {step}
+                           </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-end gap-3">
+          <Button onClick={handleSubmit} disabled={!form.projectId || !form.location || !selectedFile || isProcessing}>
+            {isProcessing ? 'Processing...' : 'Submit'}
+          </Button>
+      </div>
+    </div>
   );
 }
 
 
 // --- Main Page Component ---
-
 export default function SubmissionsPage() {
   const { currentUser, submissions, setSubmissions } = useAuth();
 
   const visible = useMemo(() => {
     if (!submissions) return [];
-    if (currentUser.role === "super-admin") return submissions;
-    if (currentUser.role === "admin") return submissions.filter(s => s.adminId === currentUser.id);
-    return submissions.filter(s => s.submittedBy === currentUser.id);
+    const sorted = [...submissions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (currentUser.role === "super-admin") return sorted;
+    if (currentUser.role === "admin") return sorted.filter(s => s.adminId === currentUser.id);
+    return sorted.filter(s => s.submittedBy === currentUser.id);
   }, [currentUser, submissions]);
   
   const verify = (id: number) => setSubmissions(submissions.map(s => s.id === id ? { ...s, status: "Verified" } : s));
@@ -151,8 +174,7 @@ export default function SubmissionsPage() {
           <p className="text-sm text-muted-foreground">Review, verify or reject submissions from the list below.</p>
         </div>
 
-        {/* --- Form Section Added Here --- */}
-        <SubmissionForm currentUser={currentUser} setSubmissions={setSubmissions} submissions={submissions} />
+        <NewSubmissionForm />
 
         <section className="rounded-xl border bg-card p-5">
            <h3 className="text-lg font-semibold mb-4">Submission History</h3>
@@ -202,3 +224,4 @@ export default function SubmissionsPage() {
     </Layout>
   );
 }
+
