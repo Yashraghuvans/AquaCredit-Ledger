@@ -1,7 +1,17 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { users } from "@/data/mockData";
-import { FiHome, FiUsers, FiFileText, FiList, FiPlusCircle, FiLogOut, FiX, FiImage } from "react-icons/fi";
+import {
+  FiHome,
+  FiUsers,
+  FiFileText,
+  FiList,
+  FiPlusCircle,
+  FiLogOut,
+  FiX,
+  FiImage,
+  FiMenu,
+} from "react-icons/fi";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -110,6 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { currentUser, loginAs, createNewSubmission, logout: contextLogout } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const logout = () => {
     if(contextLogout) contextLogout();
@@ -132,8 +143,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {isModalOpen && <NewSubmissionModal createNewSubmission={createNewSubmission} onClose={() => setIsModalOpen(false)} />}
-      <div className="min-h-screen grid grid-cols-1 md:grid-cols-[260px_1fr] bg-background text-foreground">
-        <aside className="hidden md:flex flex-col gap-4 border-r p-4 bg-card/60">
+      <div className="min-h-screen grid grid-cols-1 bg-background text-foreground md:grid-cols-[260px_1fr]">
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-background/70 backdrop-blur-sm"
+              aria-label="Close menu"
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <aside className="relative flex h-full w-[min(88vw,280px)] flex-col gap-3 border-r bg-card p-4 shadow-xl">
+              <div className="flex items-center justify-between px-1 pb-2">
+                <p className="text-sm font-semibold">Navigation</p>
+                <button
+                  type="button"
+                  onClick={() => setMobileNavOpen(false)}
+                  className="grid h-8 w-8 place-items-center rounded-md border"
+                >
+                  <FiX />
+                </button>
+              </div>
+              <div onClick={() => setMobileNavOpen(false)} className="space-y-1">
+                {navItem("/dashboard", "Dashboard", FiHome)}
+                {navItem("/submissions", "Submissions", FiFileText)}
+                {navItem("/logs", "Blockchain Log", FiList)}
+                {currentUser.role === "super-admin" && navItem("/users", "User Management", FiUsers)}
+              </div>
+            </aside>
+          </div>
+        )}
+
+        <aside className="hidden flex-col gap-4 border-r bg-card/60 p-4 md:flex">
           <div className="flex items-center gap-2 px-2 pt-1 pb-4">
             <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
               <span className="text-primary font-black">A</span>
@@ -153,18 +193,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main className="flex flex-col min-h-screen">
-          <header className="sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-background/60 bg-background/80 border-b">
-            <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <button className="md:hidden rounded-md px-2 py-1.5 border text-sm">Menu</button>
-                <h1 className="text-xl font-semibold">AquaCredit Ledger Admin</h1>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{currentUser.role}</span>
+          <header className="sticky top-0 z-10 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+            <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm md:hidden"
+                  onClick={() => setMobileNavOpen(true)}
+                >
+                  <FiMenu className="h-4 w-4" /> Menu
+                </button>
+                <div className="min-w-0">
+                  <h1 className="truncate text-lg font-semibold sm:text-xl">AquaCredit Admin</h1>
+                  <p className="truncate text-xs text-muted-foreground">{currentUser.name}</p>
+                </div>
+                <span className="ml-auto shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium capitalize text-primary lg:ml-2">
+                  {currentUser.role}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
                 <select
                   value={currentUser.id}
                   onChange={(e) => loginAs(Number(e.target.value))}
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  className="h-9 w-full rounded-md border bg-background px-3 text-sm sm:min-w-[220px] sm:w-auto"
                 >
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -172,23 +223,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     </option>
                   ))}
                 </select>
-                <Button 
-                  onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center gap-2"
-                >
-                  <FiPlusCircle /> New Submission
-                </Button>
-                <Button 
-                  onClick={logout}
-                  variant="outline"
-                  className="inline-flex items-center gap-2"
-                >
-                  <FiLogOut /> Logout
-                </Button>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                  <Button
+                    onClick={() => setIsModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-2"
+                  >
+                    <FiPlusCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">New Submission</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                  <Button
+                    onClick={logout}
+                    variant="outline"
+                    className="inline-flex items-center justify-center gap-2"
+                  >
+                    <FiLogOut className="h-4 w-4" /> Logout
+                  </Button>
+                </div>
               </div>
             </div>
           </header>
-          <div className="p-4 md:p-6 lg:p-8 flex-1">{children}</div>
+          <div className="mx-auto w-full max-w-[1600px] flex-1 p-4 md:p-6 lg:p-8">{children}</div>
           <footer className="border-t p-4 text-xs text-muted-foreground">
             © {new Date().getFullYear()} AquaCredit Ledger. All rights reserved.
           </footer>
